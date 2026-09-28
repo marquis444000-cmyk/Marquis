@@ -1,0 +1,616 @@
+-- Marquis Scripts
+-- LocalScript in StarterPlayer > StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local plr = Players.LocalPlayer
+
+local esp = false
+local xray = false
+local lockOn = false
+
+local highlights = {}
+local target = nil
+
+--------------------------------------------------
+-- GUI
+--------------------------------------------------
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "MarquisScripts"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = plr:WaitForChild("PlayerGui")
+
+--------------------------------------------------
+-- LOADING SCREEN
+--------------------------------------------------
+
+local loading = Instance.new("Frame")
+loading.Size = UDim2.fromScale(1,1)
+loading.BackgroundColor3 = Color3.fromRGB(10,10,12)
+loading.BorderSizePixel = 0
+loading.ZIndex = 100
+loading.Parent = gui
+
+local glow = Instance.new("Frame")
+glow.Size = UDim2.fromOffset(500,500)
+glow.Position = UDim2.fromScale(.5,.45)
+glow.AnchorPoint = Vector2.new(.5,.5)
+glow.BackgroundColor3 = Color3.fromRGB(30,30,40)
+glow.BackgroundTransparency = .65
+glow.BorderSizePixel = 0
+glow.ZIndex = 101
+glow.Parent = loading
+
+local glowCorner = Instance.new("UICorner")
+glowCorner.CornerRadius = UDim.new(1,0)
+glowCorner.Parent = glow
+
+local loadTitle = Instance.new("TextLabel")
+loadTitle.Size = UDim2.fromOffset(500,70)
+loadTitle.Position = UDim2.fromScale(.5,.35)
+loadTitle.AnchorPoint = Vector2.new(.5,.5)
+loadTitle.BackgroundTransparency = 1
+loadTitle.Text = "MARQUIS SCRIPTS"
+loadTitle.TextColor3 = Color3.new(1,1,1)
+loadTitle.TextSize = 34
+loadTitle.Font = Enum.Font.GothamBold
+loadTitle.ZIndex = 102
+loadTitle.Parent = loading
+
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.fromOffset(500,35)
+subtitle.Position = UDim2.fromScale(.5,.43)
+subtitle.AnchorPoint = Vector2.new(.5,.5)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "INITIALIZING..."
+subtitle.TextColor3 = Color3.fromRGB(150,150,150)
+subtitle.TextSize = 14
+subtitle.Font = Enum.Font.Gotham
+subtitle.ZIndex = 102
+subtitle.Parent = loading
+
+local barBack = Instance.new("Frame")
+barBack.Size = UDim2.fromOffset(360,8)
+barBack.Position = UDim2.fromScale(.5,.54)
+barBack.AnchorPoint = Vector2.new(.5,.5)
+barBack.BackgroundColor3 = Color3.fromRGB(40,40,45)
+barBack.BorderSizePixel = 0
+barBack.ZIndex = 102
+barBack.Parent = loading
+
+local barCorner = Instance.new("UICorner")
+barCorner.CornerRadius = UDim.new(1,0)
+barCorner.Parent = barBack
+
+local bar = Instance.new("Frame")
+bar.Size = UDim2.new(0,0,1,0)
+bar.BackgroundColor3 = Color3.new(1,1,1)
+bar.BorderSizePixel = 0
+bar.ZIndex = 103
+bar.Parent = barBack
+
+local barCorner2 = Instance.new("UICorner")
+barCorner2.CornerRadius = UDim.new(1,0)
+barCorner2.Parent = bar
+
+local percent = Instance.new("TextLabel")
+percent.Size = UDim2.fromOffset(150,30)
+percent.Position = UDim2.fromScale(.5,.59)
+percent.AnchorPoint = Vector2.new(.5,.5)
+percent.BackgroundTransparency = 1
+percent.Text = "0%"
+percent.TextColor3 = Color3.fromRGB(180,180,180)
+percent.TextSize = 13
+percent.Font = Enum.Font.Gotham
+percent.ZIndex = 102
+percent.Parent = loading
+
+task.spawn(function()
+
+	for i = 0,100 do
+
+		bar.Size = UDim2.new(i/100,0,1,0)
+		percent.Text = i.."%"
+
+		if i < 30 then
+			subtitle.Text = "INITIALIZING..."
+		elseif i < 60 then
+			subtitle.Text = "LOADING FEATURES..."
+		elseif i < 90 then
+			subtitle.Text = "SETTING THINGS UP..."
+		else
+			subtitle.Text = "READY"
+		end
+
+		task.wait(.025)
+	end
+
+	task.wait(.5)
+
+	for _,object in ipairs(loading:GetDescendants()) do
+
+		if object:IsA("TextLabel") then
+
+			TweenService:Create(
+				object,
+				TweenInfo.new(.5),
+				{TextTransparency = 1}
+			):Play()
+
+		elseif object:IsA("Frame") then
+
+			TweenService:Create(
+				object,
+				TweenInfo.new(.5),
+				{BackgroundTransparency = 1}
+			):Play()
+
+		end
+	end
+
+	TweenService:Create(
+		loading,
+		TweenInfo.new(.6),
+		{BackgroundTransparency = 1}
+	):Play()
+
+	task.wait(.7)
+
+	loading:Destroy()
+
+end)
+
+--------------------------------------------------
+-- MAIN MENU
+--------------------------------------------------
+
+local menu = Instance.new("Frame")
+menu.Size = UDim2.fromOffset(230,235)
+menu.Position = UDim2.fromScale(.05,.2)
+menu.BackgroundColor3 = Color3.fromRGB(25,25,25)
+menu.BorderSizePixel = 0
+menu.Active = true
+menu.Parent = gui
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1,0,0,38)
+title.BackgroundColor3 = Color3.fromRGB(35,35,35)
+title.Text = "Marquis Scripts"
+title.TextColor3 = Color3.new(1,1,1)
+title.TextSize = 18
+title.Font = Enum.Font.GothamBold
+title.Parent = menu
+
+local function makeButton(text,y)
+
+	local b = Instance.new("TextButton")
+
+	b.Size = UDim2.fromOffset(200,40)
+	b.Position = UDim2.fromOffset(15,y)
+
+	b.Text = text
+	b.TextColor3 = Color3.new(1,1,1)
+	b.TextSize = 14
+	b.Font = Enum.Font.Gotham
+
+	b.BackgroundColor3 = Color3.fromRGB(45,45,45)
+	b.BorderSizePixel = 0
+	b.Parent = menu
+
+	return b
+end
+
+local espBtn = makeButton("ESP: OFF",48)
+local xrayBtn = makeButton("X-Ray: OFF",93)
+local lockBtn = makeButton("Aim Lock: OFF",138)
+local gunBtn = makeButton("Get Dropped Gun",183)
+
+--------------------------------------------------
+-- CLOSE BUTTON
+--------------------------------------------------
+
+local toggle = Instance.new("TextButton")
+
+toggle.Size = UDim2.fromOffset(75,32)
+
+toggle.Position = UDim2.new(
+	menu.Position.X.Scale,
+	menu.Position.X.Offset + 240,
+	menu.Position.Y.Scale,
+	menu.Position.Y.Offset
+)
+
+toggle.Text = "CLOSE"
+toggle.TextSize = 12
+toggle.TextColor3 = Color3.new(1,1,1)
+toggle.BackgroundColor3 = Color3.fromRGB(35,35,35)
+toggle.BorderSizePixel = 0
+toggle.Parent = gui
+
+toggle.MouseButton1Click:Connect(function()
+
+	menu.Visible = not menu.Visible
+	toggle.Text = menu.Visible and "CLOSE" or "OPEN"
+
+end)
+
+--------------------------------------------------
+-- ESP
+--------------------------------------------------
+
+local function clearESP(player)
+
+	if highlights[player] then
+		highlights[player]:Destroy()
+		highlights[player] = nil
+	end
+
+end
+
+local function updateESP(player)
+
+	clearESP(player)
+
+	if not esp or player == plr then
+		return
+	end
+
+	local character = player.Character
+
+	if not character then
+		return
+	end
+
+	local highlight = Instance.new("Highlight")
+
+	highlight.Name = "MarquisESP"
+	highlight.Adornee = character
+	highlight.FillTransparency = .5
+	highlight.OutlineTransparency = 0
+
+	highlight.DepthMode =
+		xray
+		and Enum.HighlightDepthMode.AlwaysOnTop
+		or Enum.HighlightDepthMode.Occluded
+
+	highlight.Parent = character
+
+	highlights[player] = highlight
+
+end
+
+local function updateAllESP()
+
+	for _,player in ipairs(Players:GetPlayers()) do
+		updateESP(player)
+	end
+
+end
+
+espBtn.MouseButton1Click:Connect(function()
+
+	esp = not esp
+
+	espBtn.Text = "ESP: "..(esp and "ON" or "OFF")
+
+	updateAllESP()
+
+end)
+
+xrayBtn.MouseButton1Click:Connect(function()
+
+	xray = not xray
+
+	xrayBtn.Text = "X-Ray: "..(xray and "ON" or "OFF")
+
+	updateAllESP()
+
+end)
+
+--------------------------------------------------
+-- AIM LOCK TARGET
+--------------------------------------------------
+
+local function getClosestTarget()
+
+	local camera = workspace.CurrentCamera
+
+	if not camera then
+		return nil
+	end
+
+	local screenCenter = Vector2.new(
+		camera.ViewportSize.X / 2,
+		camera.ViewportSize.Y / 2
+	)
+
+	local closestPlayer = nil
+	local closestDistance = math.huge
+
+	for _,player in ipairs(Players:GetPlayers()) do
+
+		if player ~= plr
+			and player.Character then
+
+			local humanoid =
+				player.Character:FindFirstChildOfClass("Humanoid")
+
+			local head =
+				player.Character:FindFirstChild("Head")
+
+			if humanoid
+				and humanoid.Health > 0
+				and head then
+
+				local screenPosition, visible =
+					camera:WorldToViewportPoint(head.Position)
+
+				if visible and screenPosition.Z > 0 then
+
+					local distance =
+						(
+							Vector2.new(
+								screenPosition.X,
+								screenPosition.Y
+							) - screenCenter
+						).Magnitude
+
+					if distance < closestDistance then
+
+						closestDistance = distance
+						closestPlayer = player
+
+					end
+
+				end
+
+			end
+
+		end
+
+	end
+
+	return closestPlayer
+end
+
+--------------------------------------------------
+-- AIM LOCK
+--------------------------------------------------
+
+lockBtn.MouseButton1Click:Connect(function()
+
+	lockOn = not lockOn
+
+	lockBtn.Text =
+		"Aim Lock: "..(lockOn and "ON" or "OFF")
+
+	if not lockOn then
+		target = nil
+	end
+
+end)
+
+RunService:BindToRenderStep(
+	"MarquisAimLock",
+	Enum.RenderPriority.Camera.Value + 1,
+	function()
+
+		if not lockOn then
+			return
+		end
+
+		-- Continuously choose the player
+		-- closest to the crosshair
+		target = getClosestTarget()
+
+		if not target then
+			return
+		end
+
+		local character = target.Character
+
+		local humanoid =
+			character:FindFirstChildOfClass("Humanoid")
+
+		local head =
+			character:FindFirstChild("Head")
+
+		if not humanoid
+			or humanoid.Health <= 0
+			or not head then
+
+			target = nil
+			return
+		end
+
+		local camera = workspace.CurrentCamera
+
+		if not camera then
+			return
+		end
+
+		camera.CFrame = CFrame.lookAt(
+			camera.CFrame.Position,
+			head.Position
+		)
+
+	end
+)
+
+--------------------------------------------------
+-- GET DROPPED GUN
+--------------------------------------------------
+
+gunBtn.MouseButton1Click:Connect(function()
+
+	local gun =
+		workspace:FindFirstChild("GunDrop",true)
+
+	if not gun then
+
+		gunBtn.Text = "Gun Not Dropped"
+
+		task.delay(1.5,function()
+			gunBtn.Text = "Get Dropped Gun"
+		end)
+
+		return
+	end
+
+	local character = plr.Character
+
+	if not character then
+		return
+	end
+
+	local root =
+		character:FindFirstChild("HumanoidRootPart")
+
+	if not root then
+		return
+	end
+
+	local gunPart
+
+	if gun:IsA("BasePart") then
+
+		gunPart = gun
+
+	else
+
+		gunPart =
+			gun:FindFirstChildWhichIsA(
+				"BasePart",
+				true
+			)
+
+	end
+
+	if gunPart then
+
+		root.CFrame =
+			gunPart.CFrame + Vector3.new(0,3,0)
+
+		gunBtn.Text = "Gun Found"
+
+		task.delay(1.5,function()
+			gunBtn.Text = "Get Dropped Gun"
+		end)
+
+	end
+
+end)
+
+--------------------------------------------------
+-- DRAG MENU
+--------------------------------------------------
+
+local dragging = false
+local dragStart
+local startPos
+
+title.InputBegan:Connect(function(input)
+
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		dragging = true
+		dragStart = input.Position
+		startPos = menu.Position
+
+	end
+
+end)
+
+UIS.InputChanged:Connect(function(input)
+
+	if not dragging then
+		return
+	end
+
+	if input.UserInputType == Enum.UserInputType.MouseMovement
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		local delta =
+			input.Position - dragStart
+
+		menu.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+
+		toggle.Position = UDim2.new(
+			menu.Position.X.Scale,
+			menu.Position.X.Offset + 240,
+			menu.Position.Y.Scale,
+			menu.Position.Y.Offset
+		)
+
+	end
+
+end)
+
+UIS.InputEnded:Connect(function(input)
+
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		dragging = false
+
+	end
+
+end)
+
+--------------------------------------------------
+-- PLAYER CONNECTIONS
+--------------------------------------------------
+
+Players.PlayerAdded:Connect(function(player)
+
+	player.CharacterAdded:Connect(function()
+
+		task.wait(.5)
+
+		updateESP(player)
+
+	end)
+
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+
+	clearESP(player)
+
+	if target == player then
+		target = nil
+	end
+
+end)
+
+--------------------------------------------------
+-- RIGHT SHIFT
+--------------------------------------------------
+
+UIS.InputBegan:Connect(function(input,processed)
+
+	if processed then
+		return
+	end
+
+	if input.KeyCode == Enum.KeyCode.RightShift then
+
+		menu.Visible = not menu.Visible
+
+		toggle.Text =
+			menu.Visible and "CLOSE" or "OPEN"
+
+	end
+
+end)
